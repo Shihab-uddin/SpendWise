@@ -2,6 +2,7 @@ import express from "express"
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
+import authRoutes from './routes/authRoutes.js';
 
 dotenv.config();
 
@@ -10,6 +11,7 @@ const prisma = new PrismaClient();
 
 app.use(cors());
 app.use(express.json());
+app.use('/api/auth', authRoutes);
 
 app.get('/', (req, res) => {
   res.send('SpendWise API is running 🚀');
