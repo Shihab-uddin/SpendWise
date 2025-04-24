@@ -1,27 +1,40 @@
 import prisma from '../prisma/client.js';
 
 export const addIncome = async (req, res) => {
-  const { name, amount, date, description, walletId } = req.body;
+  const { name, amount, description, date, walletId } = req.body;
   const userId = req.user.id;
 
   try {
-    const wallet = await prisma.wallet.findUnique({
+    // Validate wallet
+    const wallet = await prisma.wallet.findFirst({
       where: {
         id: walletId,
+        userId: userId,
       },
     });
 
-    if (!wallet || wallet.userId !== userId) {
-      return res.status(403).json({ message: "Unauthorized to add income to this wallet" });
+    if (!wallet) {
+      return res.status(403).json({ message: "Wallet not found or unauthorized" });
     }
 
+    // Add the income
     const income = await prisma.income.create({
       data: {
         name,
         amount,
-        date,
         description,
+        date: new Date(date),
         walletId,
+      },
+    });
+
+    // Update wallet balance
+    await prisma.wallet.update({
+      where: { id: walletId },
+      data: {
+        balance: {
+          increment: amount,
+        },
       },
     });
 

@@ -5,7 +5,7 @@ export const addExpense = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    // Validate wallet ownership
+    // Validate wallet
     const wallet = await prisma.wallet.findFirst({
       where: {
         id: walletId,
@@ -17,6 +17,12 @@ export const addExpense = async (req, res) => {
       return res.status(403).json({ message: "Wallet not found or unauthorized" });
     }
 
+    // Ensure balance is sufficient
+    if (wallet.balance < amount) {
+      return res.status(400).json({ message: "Insufficient balance" });
+    }
+
+    // Add the expense
     const expense = await prisma.expense.create({
       data: {
         name,
@@ -24,6 +30,16 @@ export const addExpense = async (req, res) => {
         description,
         date: new Date(date),
         walletId,
+      },
+    });
+
+    // Update wallet balance
+    await prisma.wallet.update({
+      where: { id: walletId },
+      data: {
+        balance: {
+          decrement: amount,
+        },
       },
     });
 
