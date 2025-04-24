@@ -42,8 +42,8 @@ model Income {
   id        Int      @id @default(autoincrement())
   name      String
   amount    Float
+  description String?
   date      DateTime
-  day       String
   wallet    Wallet   @relation(fields: [walletId], references: [id])
   walletId  Int
   createdAt DateTime @default(now())
@@ -53,8 +53,8 @@ model Expense {
   id        Int      @id @default(autoincrement())
   name      String
   amount    Float
+  description String?
   date      DateTime
-  day       String
   wallet    Wallet   @relation(fields: [walletId], references: [id])
   walletId  Int
   createdAt DateTime @default(now())
