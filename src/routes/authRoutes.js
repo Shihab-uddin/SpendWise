@@ -2,10 +2,11 @@ import express from 'express';
 import { registerUser } from '../controllers/authController.js';
 import { loginUser } from '../controllers/authController.js';
 import prisma from '../prisma/client.js';
+import { loginRateLimiter } from '../middlewares/rateLimiter.js';
 
 const router = express.Router();
 
-router.post('/login', loginUser);
+router.post('/login', loginRateLimiter, loginUser);
 router.post('/register', registerUser);
 router.get('/verify/:token', async (req, res) => {
     const { token } = req.params;

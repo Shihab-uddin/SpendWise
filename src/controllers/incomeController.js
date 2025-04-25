@@ -44,3 +44,43 @@ export const addIncome = async (req, res) => {
     res.status(500).json({ message: "Failed to add income" });
   }
 };
+
+export const getPaginatedIncomes = async (req, res, next) => {
+  const { page = 1, limit = 10, walletId, startDate, endDate } = req.query;
+  const userId = req.user.id;
+
+  try {
+    const where = {
+      wallet: { userId },
+      ...(walletId && { walletId: parseInt(walletId) }),
+      ...(startDate && endDate && {
+        date: {
+          gte: new Date(startDate),
+          lte: new Date(endDate),
+        },
+      }),
+    };
+
+    const incomes = await prisma.income.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: parseInt(limit),
+      orderBy: { date: 'desc' },
+      include: {
+        wallet: true,
+      },
+    });
+
+    const total = await prisma.income.count({ where });
+
+    res.json({
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      data: incomes,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+

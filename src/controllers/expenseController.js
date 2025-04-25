@@ -49,3 +49,40 @@ export const addExpense = async (req, res) => {
     res.status(500).json({ message: "Failed to add expense" });
   }
 };
+
+export const getPaginatedExpenses = async (req, res, next) => {
+  const { page = 1, limit = 10, walletId, startDate, endDate } = req.query;
+  const userId = req.user.id;
+
+  try {
+    const where = {
+      wallet: { userId },
+      ...(walletId && { walletId: parseInt(walletId) }),
+      ...(startDate && endDate && {
+        date: {
+          gte: new Date(startDate),
+          lte: new Date(endDate),
+        },
+      }),
+    };
+
+    const expenses = await prisma.expense.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: parseInt(limit),
+      orderBy: { date: 'desc' },
+    });
+
+    const total = await prisma.expense.count({ where });
+
+    res.json({
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      data: expenses,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+

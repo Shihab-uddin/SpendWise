@@ -54,3 +54,53 @@ export const addTransfer = async (req, res) => {
     res.status(500).json({ message: "Transfer failed" });
   }
 };
+
+export const getPaginatedTransfers = async (req, res, next) => {
+    const { page = 1, limit = 10, walletId, startDate, endDate } = req.query;
+    const userId = req.user.id;
+  
+    try {
+      const where = {
+        OR: [
+          { fromWallet: { userId } },
+          { toWallet: { userId } },
+        ],
+        ...(walletId && {
+          OR: [
+            { fromWalletId: parseInt(walletId) },
+            { toWalletId: parseInt(walletId) },
+          ],
+        }),
+        ...(startDate && endDate && {
+          date: {
+            gte: new Date(startDate),
+            lte: new Date(endDate),
+          },
+        }),
+      };
+  
+      const transfers = await prisma.transfer.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: parseInt(limit),
+        orderBy: { date: 'desc' },
+        include: {
+          fromWallet: true,
+          toWallet: true,
+        },
+      });
+  
+      const total = await prisma.transfer.count({ where });
+  
+      res.json({
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        data: transfers,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+  
+  

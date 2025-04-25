@@ -8,6 +8,7 @@ import incomeRoutes from './routes/incomeRoutes.js';
 import expenseRoutes from './routes/expenseRoutes.js';
 import transferRoutes from './routes/transferRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
+import errorHandler from './middlewares/errorHandler.js';
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ const prisma = new PrismaClient();
 
 app.use(cors());
 app.use(express.json());
+app.use(errorHandler);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/wallet', walletRoutes);
