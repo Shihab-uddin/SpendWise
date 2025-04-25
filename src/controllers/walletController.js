@@ -3,7 +3,6 @@ import prisma from '../prisma/client.js';
 export const createWallet = async (req, res) => {
   const { name, description } = req.body;
   const userId = req.user.id;
-  console.log("das" ,userId);
 
   try {
     const wallet = await prisma.wallet.create({

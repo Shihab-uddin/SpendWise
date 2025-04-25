@@ -5,7 +5,8 @@ import { PrismaClient } from '@prisma/client';
 import authRoutes from './routes/authRoutes.js';
 import walletRoutes from './routes/walletRoutes.js'
 import incomeRoutes from './routes/incomeRoutes.js';
-import expenseRoutes from './routes/expenseRoutes.js'
+import expenseRoutes from './routes/expenseRoutes.js';
+import transferRoutes from './routes/transferRoutes.js';
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/income', incomeRoutes);
 app.use('/api/expense', expenseRoutes);
+app.use('/api/transfer', transferRoutes);
 
 app.get('/', (req, res) => {
   res.send('SpendWise API is running 🚀');

@@ -67,8 +67,8 @@ model Transfer {
   toWallet       Wallet   @relation("TransferToWallet", fields: [toWalletId], references: [id])
   toWalletId     Int
   amount         Float
+  description  String?
   date           DateTime
-  day            String
   createdAt      DateTime @default(now())
 }
 
