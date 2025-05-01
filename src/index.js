@@ -15,9 +15,14 @@ dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true, // only needed if you're using cookies or sessions
+  })
+);
+
 app.use(express.json());
-app.use(errorHandler);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/wallet', walletRoutes);
@@ -30,6 +35,8 @@ app.use('/api/dashboard', dashboardRoutes);
 app.get('/', (req, res) => {
   res.send('SpendWise API is running 🚀');
 });
+
+app.use(errorHandler);
 
 // Start the server
 const PORT = process.env.PORT || 5000;
