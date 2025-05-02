@@ -104,71 +104,53 @@ export const getPaginatedTransfers = async (req, res, next) => {
   };
   
   export const editTransfer = async (req, res) => {
-    const { id } = req.params;
-    const { amount, description, date, fromWalletId, toWalletId } = req.body;
-    const userId = req.user.id;
+    const transferId = Number(req.params.id);
+    const { description, amount, date, fromWalletId, toWalletId } = req.body;
+  
+    console.log("Edit Transfer Body:", req.body);
   
     try {
-      const transfer = await prisma.transfer.findUnique({
-        where: { id: parseInt(id) },
-        include: {
-          fromWallet: true,
-          toWallet: true,
-        },
+      const existingTransfer = await prisma.transfer.findUnique({
+        where: { id: transferId },
       });
   
-      if (!transfer || transfer.fromWallet.userId !== userId || transfer.toWallet.userId !== userId) {
-        return res.status(404).json({ message: 'Transfer not found or unauthorized' });
+      if (!existingTransfer) {
+        return res.status(404).json({ message: "Transfer not found" });
       }
   
-      // Revert previous transfer
-      await prisma.wallet.update({
-        where: { id: transfer.fromWalletId },
-        data: { balance: { increment: transfer.amount } },
+      const fromWallet = await prisma.wallet.findUnique({
+        where: { id: Number(fromWalletId) },
       });
   
-      await prisma.wallet.update({
-        where: { id: transfer.toWalletId },
-        data: { balance: { decrement: transfer.amount } },
+      const toWallet = await prisma.wallet.findUnique({
+        where: { id: Number(toWalletId) },
       });
   
-      // Check new fromWallet balance
-      const newFromWallet = await prisma.wallet.findFirst({
-        where: { id: fromWalletId, userId }
-      });
-  
-      if (!newFromWallet || newFromWallet.balance < amount) {
-        return res.status(400).json({ message: 'Insufficient balance in new source wallet' });
+      if (!fromWallet || !toWallet) {
+        return res.status(400).json({ message: "Invalid wallet(s) provided" });
       }
-  
-      // Apply new transfer
-      await prisma.wallet.update({
-        where: { id: fromWalletId },
-        data: { balance: { decrement: amount } },
-      });
-  
-      await prisma.wallet.update({
-        where: { id: toWalletId },
-        data: { balance: { increment: amount } },
-      });
   
       const updatedTransfer = await prisma.transfer.update({
-        where: { id: parseInt(id) },
+        where: { id: transferId },
         data: {
-          amount,
           description,
+          amount: Number(amount),
           date: new Date(date),
-          fromWalletId,
-          toWalletId,
+          fromWallet: { connect: { id: Number(fromWalletId) } },
+          toWallet: { connect: { id: Number(toWalletId) } },
         },
       });
   
-      res.json(updatedTransfer);
+      return res.status(200).json({
+        message: "Transfer updated successfully",
+        data: updatedTransfer,
+      });
     } catch (error) {
-      console.error('Edit transfer error:', error.message);
-      res.status(500).json({ message: 'Failed to update transfer' });
+      console.error("Error updating transfer:", error);
+      return res.status(500).json({ message: "Failed to update transfer" });
     }
   };
+  
   
   export const deleteTransfer = async (req, res) => {
     const { id } = req.params;

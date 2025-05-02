@@ -87,13 +87,14 @@ export const getPaginatedExpenses = async (req, res, next) => {
 };
 
 export const editExpense = async (req, res) => {
-  const { id } = req.params;
-  const { name, amount, description, date, walletId } = req.body;
+  const expenseId = parseInt(req.params.id);
   const userId = req.user.id;
+  const { name, amount, description, date, walletId } = req.body;
+  const newWalletId = parseInt(walletId); // Ensure Int
 
   try {
     const existingExpense = await prisma.expense.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: expenseId },
       include: { wallet: true }
     });
 
@@ -101,26 +102,47 @@ export const editExpense = async (req, res) => {
       return res.status(404).json({ message: 'Expense not found or unauthorized' });
     }
 
-    // Refund previous amount to wallet
-    await prisma.wallet.update({
-      where: { id: existingExpense.walletId },
-      data: { balance: { increment: existingExpense.amount } },
-    });
+    const oldAmount = existingExpense.amount;
+    const oldWalletId = existingExpense.walletId;
 
-    // Deduct new amount
-    await prisma.wallet.update({
-      where: { id: walletId },
-      data: { balance: { decrement: amount } },
-    });
+    // If wallet changed, refund old and deduct from new
+    if (oldWalletId !== newWalletId) {
+      // Refund to old wallet
+      await prisma.wallet.update({
+        where: { id: oldWalletId },
+        data: { balance: { increment: oldAmount } },
+      });
 
+      // Deduct from new wallet
+      await prisma.wallet.update({
+        where: { id: newWalletId },
+        data: { balance: { decrement: amount } },
+      });
+    } else {
+      // Same wallet: adjust difference
+      const difference = oldAmount - amount;
+
+      if (difference !== 0) {
+        await prisma.wallet.update({
+          where: { id: oldWalletId },
+          data: {
+            balance: {
+              increment: difference // if difference = 500 (1500 → 1000), increment 500
+            }
+          }
+        });
+      }
+    }
+
+    // Update expense
     const updatedExpense = await prisma.expense.update({
-      where: { id: parseInt(id) },
+      where: { id: expenseId },
       data: {
         name,
         amount,
         description,
         date: new Date(date),
-        walletId,
+        walletId: newWalletId,
       },
     });
 
@@ -130,6 +152,8 @@ export const editExpense = async (req, res) => {
     res.status(500).json({ message: 'Failed to update expense' });
   }
 };
+
+
 
 export const deleteExpense = async (req, res) => {
   const { id } = req.params;

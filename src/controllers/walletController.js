@@ -91,13 +91,15 @@ export const deleteWallet = async (req, res) => {
       return res.status(404).json({ message: "Wallet not found or unauthorized" });
     }
 
+    // Wallet deletion will automatically cascade delete related income, expense, and transfer
     await prisma.wallet.delete({
       where: { id: parseInt(id) },
     });
 
-    res.json({ message: "Wallet deleted successfully" });
+    res.status(200).json({ message: "Wallet and all related records deleted successfully" });
   } catch (error) {
-    console.error("Delete wallet error:", error.message);
+    console.error("Delete wallet error:", error);
     res.status(500).json({ message: "Failed to delete wallet" });
   }
 };
+

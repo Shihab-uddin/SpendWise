@@ -87,6 +87,7 @@ export const updateIncome = async (req, res) => {
   const incomeId = parseInt(req.params.id);
   const userId = req.user.id;
   const { name, amount, description, date, walletId } = req.body;
+  const newWalletId = parseInt(walletId);
 
   try {
     const income = await prisma.income.findFirst({
@@ -102,17 +103,40 @@ export const updateIncome = async (req, res) => {
       return res.status(404).json({ message: "Income not found or unauthorized" });
     }
 
-    // Revert the previous amount from wallet
-    await prisma.wallet.update({
-      where: { id: income.walletId },
-      data: {
-        balance: {
-          decrement: income.amount,
-        },
-      },
-    });
+    const oldAmount = income.amount;
+    const oldWalletId = income.walletId;
 
-    // Update income record
+    // If wallet changed: revert from old and add to new
+    if (oldWalletId !== newWalletId) {
+      await prisma.wallet.update({
+        where: { id: oldWalletId },
+        data: {
+          balance: { decrement: oldAmount },
+        },
+      });
+
+      await prisma.wallet.update({
+        where: { id: newWalletId },
+        data: {
+          balance: { increment: amount },
+        },
+      });
+    } else {
+      // Wallet is the same — adjust only the difference
+      const difference = amount - oldAmount; // e.g. 2000 - 1500 = +500
+
+      if (difference !== 0) {
+        await prisma.wallet.update({
+          where: { id: oldWalletId },
+          data: {
+            balance: {
+              increment: difference, // positive if increasing, negative if decreasing
+            },
+          },
+        });
+      }
+    }
+
     const updatedIncome = await prisma.income.update({
       where: { id: incomeId },
       data: {
@@ -120,17 +144,7 @@ export const updateIncome = async (req, res) => {
         amount,
         description,
         date: new Date(date),
-        walletId,
-      },
-    });
-
-    // Add new amount to wallet
-    await prisma.wallet.update({
-      where: { id: walletId },
-      data: {
-        balance: {
-          increment: amount,
-        },
+        walletId: newWalletId,
       },
     });
 
@@ -140,6 +154,7 @@ export const updateIncome = async (req, res) => {
     res.status(500).json({ message: "Failed to update income" });
   }
 };
+
 
 export const deleteIncome = async (req, res) => {
   const incomeId = parseInt(req.params.id);
