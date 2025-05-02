@@ -51,4 +51,53 @@ export const getPaginatedWallets = async (req, res, next) => {
   }
 };
 
+export const updateWallet = async (req, res) => {
+  const { id } = req.params;
+  const { name, description } = req.body;
+  const userId = req.user.id;
 
+  try {
+    const wallet = await prisma.wallet.findFirst({
+      where: { id: parseInt(id), userId },
+    });
+
+    if (!wallet) {
+      return res.status(404).json({ message: "Wallet not found or unauthorized" });
+    }
+
+    const updatedWallet = await prisma.wallet.update({
+      where: { id: parseInt(id) },
+      data: { name, description },
+    });
+
+    res.json(updatedWallet);
+  } catch (error) {
+    console.error("Update wallet error:", error.message);
+    res.status(500).json({ message: "Failed to update wallet" });
+  }
+};
+
+// Delete Wallet
+export const deleteWallet = async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const wallet = await prisma.wallet.findFirst({
+      where: { id: parseInt(id), userId },
+    });
+
+    if (!wallet) {
+      return res.status(404).json({ message: "Wallet not found or unauthorized" });
+    }
+
+    await prisma.wallet.delete({
+      where: { id: parseInt(id) },
+    });
+
+    res.json({ message: "Wallet deleted successfully" });
+  } catch (error) {
+    console.error("Delete wallet error:", error.message);
+    res.status(500).json({ message: "Failed to delete wallet" });
+  }
+};

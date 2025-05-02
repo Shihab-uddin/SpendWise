@@ -86,3 +86,77 @@ export const getPaginatedExpenses = async (req, res, next) => {
   }
 };
 
+export const editExpense = async (req, res) => {
+  const { id } = req.params;
+  const { name, amount, description, date, walletId } = req.body;
+  const userId = req.user.id;
+
+  try {
+    const existingExpense = await prisma.expense.findUnique({
+      where: { id: parseInt(id) },
+      include: { wallet: true }
+    });
+
+    if (!existingExpense || existingExpense.wallet.userId !== userId) {
+      return res.status(404).json({ message: 'Expense not found or unauthorized' });
+    }
+
+    // Refund previous amount to wallet
+    await prisma.wallet.update({
+      where: { id: existingExpense.walletId },
+      data: { balance: { increment: existingExpense.amount } },
+    });
+
+    // Deduct new amount
+    await prisma.wallet.update({
+      where: { id: walletId },
+      data: { balance: { decrement: amount } },
+    });
+
+    const updatedExpense = await prisma.expense.update({
+      where: { id: parseInt(id) },
+      data: {
+        name,
+        amount,
+        description,
+        date: new Date(date),
+        walletId,
+      },
+    });
+
+    res.json(updatedExpense);
+  } catch (error) {
+    console.error('Edit expense error:', error.message);
+    res.status(500).json({ message: 'Failed to update expense' });
+  }
+};
+
+export const deleteExpense = async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const expense = await prisma.expense.findUnique({
+      where: { id: parseInt(id) },
+      include: { wallet: true }
+    });
+
+    if (!expense || expense.wallet.userId !== userId) {
+      return res.status(404).json({ message: 'Expense not found or unauthorized' });
+    }
+
+    // Refund the expense amount to the wallet
+    await prisma.wallet.update({
+      where: { id: expense.walletId },
+      data: { balance: { increment: expense.amount } },
+    });
+
+    await prisma.expense.delete({ where: { id: parseInt(id) } });
+
+    res.json({ message: 'Expense deleted successfully' });
+  } catch (error) {
+    console.error('Delete expense error:', error.message);
+    res.status(500).json({ message: 'Failed to delete expense' });
+  }
+};
+

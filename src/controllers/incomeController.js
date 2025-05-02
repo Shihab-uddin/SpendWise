@@ -83,4 +83,101 @@ export const getPaginatedIncomes = async (req, res, next) => {
     next(err);
   }
 };
+export const updateIncome = async (req, res) => {
+  const incomeId = parseInt(req.params.id);
+  const userId = req.user.id;
+  const { name, amount, description, date, walletId } = req.body;
+
+  try {
+    const income = await prisma.income.findFirst({
+      where: {
+        id: incomeId,
+        wallet: {
+          userId: userId,
+        },
+      },
+    });
+
+    if (!income) {
+      return res.status(404).json({ message: "Income not found or unauthorized" });
+    }
+
+    // Revert the previous amount from wallet
+    await prisma.wallet.update({
+      where: { id: income.walletId },
+      data: {
+        balance: {
+          decrement: income.amount,
+        },
+      },
+    });
+
+    // Update income record
+    const updatedIncome = await prisma.income.update({
+      where: { id: incomeId },
+      data: {
+        name,
+        amount,
+        description,
+        date: new Date(date),
+        walletId,
+      },
+    });
+
+    // Add new amount to wallet
+    await prisma.wallet.update({
+      where: { id: walletId },
+      data: {
+        balance: {
+          increment: amount,
+        },
+      },
+    });
+
+    res.json(updatedIncome);
+  } catch (error) {
+    console.error("Update income error:", error.message);
+    res.status(500).json({ message: "Failed to update income" });
+  }
+};
+
+export const deleteIncome = async (req, res) => {
+  const incomeId = parseInt(req.params.id);
+  const userId = req.user.id;
+
+  try {
+    const income = await prisma.income.findFirst({
+      where: {
+        id: incomeId,
+        wallet: {
+          userId: userId,
+        },
+      },
+    });
+
+    if (!income) {
+      return res.status(404).json({ message: "Income not found or unauthorized" });
+    }
+
+    // Revert income amount from wallet
+    await prisma.wallet.update({
+      where: { id: income.walletId },
+      data: {
+        balance: {
+          decrement: income.amount,
+        },
+      },
+    });
+
+    await prisma.income.delete({
+      where: { id: incomeId },
+    });
+
+    res.json({ message: "Income deleted successfully" });
+  } catch (error) {
+    console.error("Delete income error:", error.message);
+    res.status(500).json({ message: "Failed to delete income" });
+  }
+};
+
 
