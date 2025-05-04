@@ -66,19 +66,31 @@ export const getPaginatedExpenses = async (req, res, next) => {
       }),
     };
 
+    const total = await prisma.expense.count({ where });
+
     const expenses = await prisma.expense.findMany({
       where,
       skip: (page - 1) * limit,
       take: parseInt(limit),
       orderBy: { date: 'desc' },
+      include: {
+        wallet: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
     });
+    
 
-    const total = await prisma.expense.count({ where });
+   const totalPages = Math.ceil(total / limit); // 👈 Add this
 
     res.json({
       total,
       page: parseInt(page),
       limit: parseInt(limit),
+      totalPages,
       data: expenses,
     });
   } catch (err) {

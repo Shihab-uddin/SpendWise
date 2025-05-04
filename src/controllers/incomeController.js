@@ -61,6 +61,8 @@ export const getPaginatedIncomes = async (req, res, next) => {
       }),
     };
 
+    const total = await prisma.income.count({ where });
+
     const incomes = await prisma.income.findMany({
       where,
       skip: (page - 1) * limit,
@@ -71,18 +73,20 @@ export const getPaginatedIncomes = async (req, res, next) => {
       },
     });
 
-    const total = await prisma.income.count({ where });
+    const totalPages = Math.ceil(total / limit);
 
     res.json({
       total,
       page: parseInt(page),
       limit: parseInt(limit),
+      totalPages,
       data: incomes,
     });
   } catch (err) {
     next(err);
   }
 };
+
 export const updateIncome = async (req, res) => {
   const incomeId = parseInt(req.params.id);
   const userId = req.user.id;

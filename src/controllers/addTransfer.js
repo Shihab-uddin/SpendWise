@@ -56,52 +56,70 @@ export const addTransfer = async (req, res) => {
 };
 
 export const getPaginatedTransfers = async (req, res, next) => {
-    const { page = 1, limit = 10, walletId, startDate, endDate } = req.query;
-    const userId = req.user.id;
-  
-    try {
-      const where = {
-        OR: [
-          { fromWallet: { userId } },
-          { toWallet: { userId } },
-        ],
-        ...(walletId && {
+  const { page = 1, limit = 10, walletId, startDate, endDate } = req.query;
+  const userId = req.user.id;
+
+  try {
+    const parsedWalletId = walletId ? parseInt(walletId) : null;
+
+    const where = {
+      AND: [
+        {
           OR: [
-            { fromWalletId: parseInt(walletId) },
-            { toWalletId: parseInt(walletId) },
+            { fromWallet: { userId } },
+            { toWallet: { userId } },
           ],
-        }),
-        ...(startDate && endDate && {
-          date: {
-            gte: new Date(startDate),
-            lte: new Date(endDate),
-          },
-        }),
-      };
-  
-      const transfers = await prisma.transfer.findMany({
-        where,
-        skip: (page - 1) * limit,
-        take: parseInt(limit),
-        orderBy: { date: 'desc' },
-        include: {
-          fromWallet: true,
-          toWallet: true,
         },
-      });
-  
-      const total = await prisma.transfer.count({ where });
-  
-      res.json({
-        total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        data: transfers,
-      });
-    } catch (err) {
-      next(err);
-    }
-  };
+        ...(parsedWalletId
+          ? [{
+              OR: [
+                { fromWalletId: parsedWalletId },
+                { toWalletId: parsedWalletId },
+              ],
+            }]
+          : []),
+        ...(startDate && endDate
+          ? [{
+              date: {
+                gte: new Date(startDate),
+                lte: new Date(endDate),
+              },
+            }]
+          : []),
+      ],
+    };
+
+    const total = await prisma.transfer.count({ where });
+
+    const transfers = await prisma.transfer.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: parseInt(limit),
+      orderBy: { date: 'desc' },
+      include: {
+        fromWallet: {
+          select: { id: true, name: true },
+        },
+        toWallet: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    const totalPages = Math.ceil(total / limit);
+
+    res.json({
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages,
+      data: transfers,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
   
   export const editTransfer = async (req, res) => {
     const transferId = Number(req.params.id);
