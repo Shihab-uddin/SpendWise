@@ -31,5 +31,8 @@ SpendWise is a financial tracker system that helps users manage income, expenses
 
 ```bash
 git clone 
-cd spendwise-api
+cd spendwise
+change the .env file DATABASE_URL="mysql://root:@localhost:3306/your-table-name"
 npm install
+run npx prisma db push
+npm run dev
